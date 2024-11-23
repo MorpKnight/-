@@ -1,0 +1,16 @@
+dependencies:
+  espressif/esp-dl:
+    component_hash: 94ccf10a84037df159191d72ca5d51e252b27410ecff4e609cf2e6854d238bbb
+    source:
+      git: https://github.com/espressif/esp-dl.git
+      path: .
+      type: git
+    version: 959892df9a14760d2b69ef00e878056950a3071b
+  idf:
+    component_hash: null
+    source:
+      type: idf
+    version: 4.4.2
+manifest_hash: 111c99264bc89dbb226083d7af4757319cc0c1ca5c7571ee142d5ba0209148c6
+target: esp32s3
+version: 1.0.0

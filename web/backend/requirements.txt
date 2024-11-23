@@ -1,0 +1,11 @@
+joblib==1.4.2
+pandas==2.2.3
+scikit_learn==1.5.2
+paho_mqtt==2.1.0
+fastapi
+uvicorn[standard]
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+pymongo
+pydantic[email]

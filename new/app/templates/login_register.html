@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Register/Login</title>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+        <h2 id="form-title" class="text-2xl font-bold mb-6">Login</h2>
+        <form id="form" method="post" action="/login">
+            <div class="mb-4">
+                <label class="block text-gray-700">Username</label>
+                <input name="username" type="text" class="w-full p-2 border border-gray-300 rounded mt-2" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700">Password</label>
+                <input name="password" type="password" class="w-full p-2 border border-gray-300 rounded mt-2" required>
+            </div>
+            <button class="w-full bg-blue-500 text-white p-2 rounded mt-4">Submit</button>
+        </form>
+        <div id="toggle-buttons" class="mt-4 text-center">
+            <button onclick="toggleForm('register')" class="text-blue-500">Register</button>
+            <span>|</span>
+            <button onclick="toggleForm('login')" class="text-blue-500">Login</button>
+        </div>
+        <p id="message" class="text-red-500 mt-4">{{ message }}</p>
+        <!-- SSO Login Button -->
+        <button onclick="AuthSso()" class="w-full bg-green-500 text-white p-2 rounded mt-4">Login with SSO</button>
+    </div>
+
+    <script>
+        function toggleForm(type) {
+            const form = document.getElementById('form');
+            const formTitle = document.getElementById('form-title');
+            if (type === 'register') {
+                formTitle.textContent = 'Register';
+                form.action = '/register';
+            } else {
+                formTitle.textContent = 'Login';
+                form.action = '/login';
+            }
+        }
+
+        async function AuthSso() {
+            // Redirect to CAS logout page
+            window.location.href = 'https://sso.ui.ac.id/cas2/logout';
+
+            // After logout, wait a moment (e.g., 1 second) before redirecting to login
+            setTimeout(() => {
+                const redirectUrl = `https://sso.ui.ac.id/cas2/login?service=${encodeURIComponent(
+                    window.location.origin + '/'
+                )}`;
+                window.location.href = redirectUrl;
+            }, 1000);  // Adjust the delay time as necessary
+
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);  // Adjust the delay time as necessary
+        }
+
+
+
+    </script>
+</body>
+
+</html>

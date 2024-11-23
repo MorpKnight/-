@@ -1,0 +1,22 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.adapterTargetName": "esp32s3",
+    "idf.customExtraPaths": "C:\\Users\\chris\\.espressif\\tools\\xtensa-esp32-elf\\esp-2021r2-patch3-8.4.0\\xtensa-esp32-elf\\bin;C:\\Users\\chris\\.espressif\\tools\\xtensa-esp32s2-elf\\esp-2021r2-patch3-8.4.0\\xtensa-esp32s2-elf\\bin;C:\\Users\\chris\\.espressif\\tools\\xtensa-esp32s3-elf\\esp-2021r2-patch3-8.4.0\\xtensa-esp32s3-elf\\bin;C:\\Users\\chris\\.espressif\\tools\\riscv32-esp-elf\\esp-2021r2-patch3-8.4.0\\riscv32-esp-elf\\bin;C:\\Users\\chris\\.espressif\\tools\\esp32ulp-elf\\2.28.51-esp-20191205\\esp32ulp-elf-binutils\\bin;C:\\Users\\chris\\.espressif\\tools\\esp32s2ulp-elf\\2.28.51-esp-20191205\\esp32s2ulp-elf-binutils\\bin;C:\\Users\\chris\\.espressif\\tools\\cmake\\3.23.1\\bin;C:\\Users\\chris\\.espressif\\tools\\openocd-esp32\\v0.11.0-esp32-20220411\\openocd-esp32\\bin;C:\\Users\\chris\\.espressif\\tools\\ninja\\1.10.2;C:\\Users\\chris\\.espressif\\tools\\idf-exe\\1.0.3;C:\\Users\\chris\\.espressif\\tools\\ccache\\4.3\\ccache-4.3-windows-64;C:\\Users\\chris\\.espressif\\tools\\dfu-util\\0.9\\dfu-util-0.9-win64",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "C:\\Users\\chris\\.espressif\\tools\\openocd-esp32\\v0.11.0-esp32-20220411/openocd-esp32/share/openocd/scripts",
+        "IDF_CCACHE_ENABLE": "1"
+    },
+    "idf.espIdfPathWin": "C:\\Users\\chris\\esp\\v4.4.2\\esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-bridge.cfg"
+    ],
+    "idf.portWin": "COM7",
+    "idf.pythonBinPathWin": "C:\\Users\\chris\\.espressif\\python_env\\idf4.4_py3.8_env\\Scripts\\python.exe",
+    "idf.toolsPathWin": "C:\\Users\\chris\\.espressif",
+    "files.associations": {
+        "protocol_examples_common.h": "c",
+        "dns.h": "c",
+        "sockets.h": "c"
+    },
+    "idf.flashType": "UART"
+}

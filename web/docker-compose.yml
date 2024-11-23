@@ -1,0 +1,51 @@
+services:
+  mongodb:
+    image: mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=HealthData
+    networks:
+      - health-monitoring-app-network
+    volumes:
+      - ./init.js:/docker-entrypoint-initdb.d/init.js
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    networks:
+      - health-monitoring-app-network
+
+  frontend:
+    build:
+      context: ./tsyp
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - health-monitoring-app-network
+
+  mongo_seed:
+    build:
+      context: ./mongo-seed
+      dockerfile: Dockerfile
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
+    networks:
+      - health-monitoring-app-network
+
+networks:
+  health-monitoring-app-network:
+    driver: bridge

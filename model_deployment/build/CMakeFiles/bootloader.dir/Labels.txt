@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+D:/Programming/playground/ESP-HAR/model_deployment/build/CMakeFiles/bootloader
+D:/Programming/playground/ESP-HAR/model_deployment/build/CMakeFiles/bootloader.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/CMakeFiles/bootloader-complete.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
