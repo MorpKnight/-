@@ -77,6 +77,7 @@ void free_and_log(void *ptr)
 
 void activity_detection_task(void *pvParameters)
 {
+    bool was_sitting = false;
     while (true)
     {
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
@@ -133,19 +134,33 @@ void activity_detection_task(void *pvParameters)
             break;
         case 2:
             strncpy(ptr->activity_label, "Sitting", sizeof(ptr->activity_label));
+            was_sitting = true;
             break;
         case 3:
             strncpy(ptr->activity_label, "Standing", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         case 4:
             strncpy(ptr->activity_label, "Upstairs", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         case 5:
             strncpy(ptr->activity_label, "Walking", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         default:
             strncpy(ptr->activity_label, "No Result", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
+        }
+
+        if (was_sitting && max_index == 0) // Detected a fall from sitting to lying down
+        {
+            esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
+            char *fall_topic = "/joki-despro/fall";
+            char *fall_message = "Fall detected!";
+            int msg_id = esp_mqtt_client_publish(client, fall_topic, fall_message, 0, 1, 0);
+            ESP_LOGI(TAG, "Fall detected, sent publish successful, msg_id=%d", msg_id);
         }
 
         if (uxQueueSpacesAvailable(activityQueue) > 0) // Check if the queue has space
