@@ -1,12 +1,3 @@
-/* MQTT (over TCP) Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -70,11 +61,24 @@ void log_error_if_nonzero(const char *message, int error_code)
     }
 }
 
+void free_and_log(void *ptr)
+{
+    if (ptr != NULL)
+    {
+        // Free the allocated memory
+        vPortFree(ptr);
+        ESP_LOGI(TAG, "Free heap size: %d bytes", esp_get_free_heap_size());
+    }
+    else
+    {
+        ESP_LOGW(TAG, "Attempted to free a NULL pointer");
+    }
+}
+
 void activity_detection_task(void *pvParameters)
 {
     while (true)
     {
-        esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
         Tensor<int16_t> input;
         index_acc = 0;
@@ -103,78 +107,102 @@ void activity_detection_task(void *pvParameters)
 
         for (size_t i = 0; i < 6; i++)
         {
-            printf("%f, ", score[i] * 100);
             if (score[i] > max_score)
             {
                 max_score = score[i];
                 max_index = i;
             }
         }
-        printf("\n");
 
-        ActData *ptr = (ActData *)pvPortMalloc(100 * sizeof(ActData));
+        ActData *ptr = (ActData *)pvPortMalloc(sizeof(ActData)); // Allocate memory for ActData
+        if (ptr == NULL)
+        {
+            ESP_LOGE(TAG, "Failed to allocate memory for activity data");
+            continue;
+        }
+
         ptr->activity_index = max_index;
-        
-
-        // Print the string stored in `ptr`
-        
 
         switch (max_index)
         {
         case 0:
-            strncpy(ptr->activity_label, "Downstairs", 100);
+            strncpy(ptr->activity_label, "Downstairs", sizeof(ptr->activity_label));
             break;
         case 1:
-            strncpy(ptr->activity_label, "Jogging", 100);
+            strncpy(ptr->activity_label, "Jogging", sizeof(ptr->activity_label));
             break;
         case 2:
-            strncpy(ptr->activity_label, "Sitting", 100);
+            strncpy(ptr->activity_label, "Sitting", sizeof(ptr->activity_label));
             break;
         case 3:
-            strncpy(ptr->activity_label, "Standing", 100);
+            strncpy(ptr->activity_label, "Standing", sizeof(ptr->activity_label));
             break;
         case 4:
-            strncpy(ptr->activity_label, "Upstairs", 100);
+            strncpy(ptr->activity_label, "Upstairs", sizeof(ptr->activity_label));
             break;
         case 5:
-            strncpy(ptr->activity_label, "Walking", 100);
+            strncpy(ptr->activity_label, "Walking", sizeof(ptr->activity_label));
             break;
         default:
-            strncpy(ptr->activity_label, "No Result", 100);
+            strncpy(ptr->activity_label, "No Result", sizeof(ptr->activity_label));
             break;
         }
 
-        if (xQueueSend(activityQueue, &ptr, portMAX_DELAY) != pdPASS)
+        if (uxQueueSpacesAvailable(activityQueue) > 0) // Check if the queue has space
         {
-            printf("Failed to send activity data to queue\n");
+            if (xQueueSend(activityQueue, &ptr, portMAX_DELAY) != pdPASS)
+            {
+                ESP_LOGE(TAG, "Failed to send activity data to queue");
+                free_and_log(ptr); // Free the allocated memory if sending to the queue fails
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Sent activity data to queue: %s", ptr->activity_label);
+            }
         }
         else
         {
-            printf("Sent activity data to queue: %s\n",ptr->activity_label);
+            ESP_LOGW(TAG, "Queue full. Dropping activity data: %s", ptr->activity_label);
+            free_and_log(ptr);
         }
+
+        // Free the memory
+        dl::tool::free_aligned(model_input);
+
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
-// Error Handling for Task
-//  vTaskDelete(NULL);
+void ActivityMQTTTask(void *pvParameters)
+{
+    ActData *ptr;
+    char *topic = "/joki-despro/activity";
+    while (true)
+    {
+        esp_mqtt_client_config_t mqtt_cfg = {
+            .uri = "mqtt://45.80.181.181",
+            .username = "forback",
+            .password = "forback2024"};
+        esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+        esp_mqtt_client_start(client);
 
-// void sendDataToMQTTTask(void *pvParameters)
-// {
-//     // Define the topic
-//     char *topic = "/topic/crsystal1";
+        if (xQueueReceive(activityQueue, &ptr, pdMS_TO_TICKS(1000)) == pdTRUE)
+        {
+            char *data = ptr->activity_label;
+            ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
 
-//     // Get data from Param
-//     char *data = (char *)pvParameters;
+            // Send data to MQTT
+            int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
+            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+            esp_mqtt_client_destroy(client);
+            free_and_log(ptr);
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 
-//     ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
-
-//     // Send data to MQTT
-//     int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
-//     ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-
-//     vTaskDelete(NULL);
-// }
+    // Error handling for task
+    // vTaskDelete(NULL);
+}
 
 extern "C" void app_main(void)
 {
@@ -193,8 +221,8 @@ extern "C" void app_main(void)
         .password = "forback2024"};
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
-    
-    activityQueue = xQueueCreate(10,(sizeof(ActData)));
+
+    activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
     BaseType_t ActivityTaskCreation = xTaskCreate(
         activity_detection_task,
@@ -211,5 +239,23 @@ extern "C" void app_main(void)
     else
     {
         printf("Failed to create task 'ActivityDetectionTask'.\n");
+    }
+
+    BaseType_t mqttTaskCreation = xTaskCreate(
+        ActivityMQTTTask,
+        "ActivityMQTTTask",
+        8192,
+        (void *)client,
+        5,
+        NULL);
+
+    if (mqttTaskCreation == pdPASS)
+    {
+        ESP_LOGI(TAG, "Task 'ActivityMQTTTask' successfully created.");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to create task 'ActivityMQTTTask'.");
+        return;
     }
 }
