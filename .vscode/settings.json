@@ -2,11 +2,5 @@
     "cmake.sourceDirectory": "D:/Programming/playground/ESP-HAR/model_deployment",
     "idf.portWin": "COM4",
     "idf.flashType": "JTAG",
-    "idf.adapterTargetName": "esp32s3",
-    "files.associations": {
-        "xstring": "cpp",
-        "charconv": "cpp",
-        "xmemory": "cpp",
-        "type_traits": "cpp"
-    }
+    "idf.adapterTargetName": "esp32s3"
 }
