@@ -1,3 +1,6 @@
 {
-    "cmake.sourceDirectory": "D:/Programming/playground/ESP-HAR/model_deployment"
+    "cmake.sourceDirectory": "D:/Programming/playground/ESP-HAR/model_deployment",
+    "idf.portWin": "COM4",
+    "idf.flashType": "JTAG",
+    "idf.adapterTargetName": "esp32s3"
 }

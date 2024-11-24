@@ -1,0 +1,25 @@
+Detecting C compiler ABI info failed to compile with the following output:
+Change Dir: C:/Users/Wendy/Documents/Code/Projects/esprf/-/model_deployment/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_f8ee9.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.11.9+a69bbaaf5 for .NET Framework
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.41.34120 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  cl /c /W1 /WX- /diagnostics:column /O2 /D _MBCS /D "CMAKE_INTDIR=\"Debug\"" /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_f8ee9.dir\Debug\\" /Fd"cmTC_f8ee9.dir\Debug\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue  -mlongcalls -Wno-frame-address "C:\Espressif\tools\cmake\3.23.1\share\cmake-3.23\Modules\CMakeCCompilerABI.c"
+cl : command line  error D8021: invalid numeric argument '/Wno-frame-address' [C:\Users\Wendy\Documents\Code\Projects\esprf\-\model_deployment\CMakeFiles\CMakeTmp\cmTC_f8ee9.vcxproj]
+
+
+
+
+Determining if the C compiler works failed with the following output:
+Change Dir: C:/Users/Wendy/Documents/Code/Projects/esprf/-/model_deployment/CMakeFiles/CMakeTmp
+
+Run Build Command(s):C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_0c612.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:m && MSBuild version 17.11.9+a69bbaaf5 for .NET Framework
+
+  Microsoft (R) C/C++ Optimizing Compiler Version 19.41.34120 for x64
+  Copyright (C) Microsoft Corporation.  All rights reserved.
+  cl /c /W1 /WX- /diagnostics:column /O2 /D _MBCS /D "CMAKE_INTDIR=\"Debug\"" /Gm- /MD /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_0c612.dir\Debug\\" /Fd"cmTC_0c612.dir\Debug\vc143.pdb" /external:W1 /Gd /TC /errorReport:queue  -mlongcalls -Wno-frame-address "C:\Users\Wendy\Documents\Code\Projects\esprf\-\model_deployment\CMakeFiles\CMakeTmp\testCCompiler.c"
+cl : command line  error D8021: invalid numeric argument '/Wno-frame-address' [C:\Users\Wendy\Documents\Code\Projects\esprf\-\model_deployment\CMakeFiles\CMakeTmp\cmTC_0c612.vcxproj]
+
+
+

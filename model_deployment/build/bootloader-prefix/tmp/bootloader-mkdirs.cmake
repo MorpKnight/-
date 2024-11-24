@@ -4,16 +4,16 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "C:/Users/chris/esp/v4.4.2/esp-idf/components/bootloader/subproject"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/tmp"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src"
-  "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Wendy/esp/v4.4.2/esp-idf/components/bootloader/subproject"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix/tmp"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix/src"
+  "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "D:/Programming/playground/ESP-HAR/model_deployment/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "C:/Users/Wendy/Documents/College/Project/esprf/RFITULAH2/model_deployment/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()

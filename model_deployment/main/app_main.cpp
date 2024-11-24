@@ -62,92 +62,38 @@ void log_error_if_nonzero(const char *message, int error_code)
     }
 }
 
-extern "C" void app_main(void)
+void activity_detection_task(void *pvParameters)
 {
-    // config I2C
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_MASTER_SDA_IO,
-        .scl_io_num = I2C_MASTER_SCL_IO,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .clk_flags = 0,
-    };
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-
-    i2c_bus = i2c_bus_create(I2C_MASTER_NUM, &conf);
-    mpu6050 = mpu6050_create(i2c_bus, MPU6050_I2C_ADDRESS);
-    uint8_t mp6050_deviceid;
-    mpu6050_acce_value_t acce;
-
-    mpu6050_get_deviceid(mpu6050, &mp6050_deviceid);
-    printf("MPU6050 Device ID: %d\n", mp6050_deviceid);
-    mpu6050_set_acce_fs(mpu6050, ACCE_FS_4G);
-
-    ESP_LOGI(TAG, "[APP] Startup..");
-    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
-
-    // esp_log_level_set("*", ESP_LOG_INFO);
-    // esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
-    // esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT_BASE", ESP_LOG_VERBOSE);
-    // esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-    // esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
-    // esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
-
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    ESP_ERROR_CHECK(example_connect());
-
-    // start mqtt
-    esp_mqtt_client_config_t mqtt_cfg = {
-        // .uri = CONFIG_BROKER_URL,
-        .uri = "mqtt://45.80.181.181",
-        .username = "forback",
-        .password = "forback2024"};
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_start(client);
+    esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
+    int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
+    Tensor<int16_t> input;
 
     while (true)
     {
-        for (int i = 0; i < 80; i++)
-        {
-            mpu6050_get_acce(mpu6050, &acce);
-            acc_xyz[index_acc] = acce.acce_x;
-            index_acc++;
-            acc_xyz[index_acc] = acce.acce_y;
-            index_acc++;
-            acc_xyz[index_acc] = acce.acce_z;
-            index_acc++;
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-        }
-
         index_acc = 0;
-        int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
+
         for (int i = 0; i < input_height * input_width * input_channel; i++)
         {
             float normalized_input = acc_xyz[i] / 1.0;
             model_input[i] = (int16_t)DL_CLIP(normalized_input * (1 << -input_exponent), -32768, 32767);
         }
 
-        Tensor<int16_t> input;
-        input.set_element((int16_t *)model_input).set_exponent(input_exponent).set_shape({input_height, input_width, input_channel}).set_auto_free(false);
+        input.set_element((int16_t *)model_input)
+            .set_exponent(input_exponent)
+            .set_shape({input_height, input_width, input_channel})
+            .set_auto_free(false);
+
         ACTIVITY model;
         dl::tool::Latency latency;
         latency.start();
         model.forward(input);
         latency.end();
         latency.print("\nActivity model", "forward");
+
         float *score = model.l6.get_output().get_element_ptr();
         float max_score = score[0];
         int max_index = 0;
+
         for (size_t i = 0; i < 6; i++)
         {
             printf("%f, ", score[i] * 100);
@@ -189,5 +135,48 @@ extern "C" void app_main(void)
             printf("No result");
         }
         printf("\n");
+
+        // Delay to simulate periodic task execution
+        vTaskDelay(pdMS_TO_TICKS(1000)); // 1-second delay
+    }
+    //Error Handling for Task
+    // vTaskDelete(NULL);
+}
+
+
+
+extern "C" void app_main(void)
+{
+    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(example_connect());
+
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://45.80.181.181",
+        .username = "forback",
+        .password = "forback2024"};
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(client);
+
+    BaseType_t result = xTaskCreate(
+        activity_detection_task,
+        "ActivityDetectionTask",
+        8192,
+        (void *)client,
+        5,
+        NULL);
+
+    if (result == pdPASS)
+    {
+        printf("Task 'ActivityDetectionTask' successfully created.\n");
+    }
+    else
+    {
+        printf("Failed to create task 'ActivityDetectionTask'.\n");
     }
 }
