@@ -54,6 +54,14 @@ int index_acc = 0;
 
 static const char *TAG = "MQTT_EXAMPLE";
 
+typedef struct ActivityData
+{
+    int activity_index;
+    char activity_label[50];
+} ActData;
+
+static QueueHandle_t activityQueue;
+
 void log_error_if_nonzero(const char *message, int error_code)
 {
     if (error_code != 0)
@@ -64,7 +72,6 @@ void log_error_if_nonzero(const char *message, int error_code)
 
 void activity_detection_task(void *pvParameters)
 {
-
     while (true)
     {
         esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
@@ -105,43 +112,69 @@ void activity_detection_task(void *pvParameters)
         }
         printf("\n");
 
+        ActData *ptr = (ActData *)pvPortMalloc(100 * sizeof(ActData));
+        ptr->activity_index = max_index;
+        
+
+        // Print the string stored in `ptr`
+        
+
         switch (max_index)
         {
         case 0:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Downstairs", 0, 0, 0);
-            printf("0: Downstairs");
+            strncpy(ptr->activity_label, "Downstairs", 100);
             break;
         case 1:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Jogging", 0, 0, 0);
-            printf("1: Jogging");
+            strncpy(ptr->activity_label, "Jogging", 100);
             break;
         case 2:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Sitting", 0, 0, 0);
-            printf("2: Sitting");
+            strncpy(ptr->activity_label, "Sitting", 100);
             break;
         case 3:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Standing", 0, 0, 0);
-            printf("3: Standing");
+            strncpy(ptr->activity_label, "Standing", 100);
             break;
         case 4:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Upstairs", 0, 0, 0);
-            printf("4: Upstairs");
+            strncpy(ptr->activity_label, "Upstairs", 100);
             break;
         case 5:
-            esp_mqtt_client_publish(client, "/joki-despro/activity", "Walking", 0, 0, 0);
-            printf("5: Walking");
+            strncpy(ptr->activity_label, "Walking", 100);
             break;
         default:
-            printf("No result");
+            strncpy(ptr->activity_label, "No Result", 100);
+            break;
         }
-        printf("\n");
 
-        // Delay to simulate periodic task execution
-        vTaskDelay(pdMS_TO_TICKS(1000)); // 1-second delay
+        if (xQueueSend(activityQueue, &ptr, portMAX_DELAY) != pdPASS)
+        {
+            printf("Failed to send activity data to queue\n");
+        }
+        else
+        {
+            printf("Sent activity data to queue: %s\n",ptr->activity_label);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    // Error Handling for Task
-    //  vTaskDelete(NULL);
 }
+
+// Error Handling for Task
+//  vTaskDelete(NULL);
+
+// void sendDataToMQTTTask(void *pvParameters)
+// {
+//     // Define the topic
+//     char *topic = "/topic/crsystal1";
+
+//     // Get data from Param
+//     char *data = (char *)pvParameters;
+
+//     ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
+
+//     // Send data to MQTT
+//     int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
+//     ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+
+//     vTaskDelete(NULL);
+// }
 
 extern "C" void app_main(void)
 {
@@ -160,8 +193,10 @@ extern "C" void app_main(void)
         .password = "forback2024"};
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
+    
+    activityQueue = xQueueCreate(10,(sizeof(ActData)));
 
-    BaseType_t result = xTaskCreate(
+    BaseType_t ActivityTaskCreation = xTaskCreate(
         activity_detection_task,
         "ActivityDetectionTask",
         8192,
@@ -169,7 +204,7 @@ extern "C" void app_main(void)
         5,
         NULL);
 
-    if (result == pdPASS)
+    if (ActivityTaskCreation == pdPASS)
     {
         printf("Task 'ActivityDetectionTask' successfully created.\n");
     }
