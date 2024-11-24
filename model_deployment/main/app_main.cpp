@@ -64,12 +64,12 @@ void log_error_if_nonzero(const char *message, int error_code)
 
 void activity_detection_task(void *pvParameters)
 {
-    esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
-    int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
-    Tensor<int16_t> input;
 
     while (true)
     {
+        esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
+        int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
+        Tensor<int16_t> input;
         index_acc = 0;
 
         for (int i = 0; i < input_height * input_width * input_channel; i++)
@@ -139,11 +139,9 @@ void activity_detection_task(void *pvParameters)
         // Delay to simulate periodic task execution
         vTaskDelay(pdMS_TO_TICKS(1000)); // 1-second delay
     }
-    //Error Handling for Task
-    // vTaskDelete(NULL);
+    // Error Handling for Task
+    //  vTaskDelete(NULL);
 }
-
-
 
 extern "C" void app_main(void)
 {
