@@ -26,7 +26,11 @@
 #include "i2c_bus.h"
 #include "mpu6050.h"
 #include "driver/i2c.h"
-#include "esp_log.h"
+
+
+#include "esp_spi_flash.h"
+#include "driver/uart.h"
+#include "driver/gpio.h"
 
 // For GPS
 #define GPS_UART_NUM UART_NUM_2
@@ -60,30 +64,20 @@ typedef struct ActivityData
 
 static QueueHandle_t activityQueue;
 
-// void uart_init()
-// {
-//     const uart_config_t uart_config = {
-//         .baud_rate = 9600,
-//         .data_bits = UART_DATA_8_BITS,
-//         .parity = UART_PARITY_DISABLE,
-//         .stop_bits = UART_STOP_BITS_1,
-//         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-//     };
-//     uart_driver_install(GPS_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
-//     uart_param_config(GPS_UART_NUM, &uart_config);
-//     uart_set_pin(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-// }
-
-esp_mqtt_client *mqtt_app_start(void)
+void uart_init()
 {
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = "mqtt://45.80.181.181",
-        .username = "forback",
-        .password = "forback2024"};
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_start(client);
-    return client;
+    const uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    };
+    uart_driver_install(GPS_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(GPS_UART_NUM, &uart_config);
+    uart_set_pin(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
+
 void log_error_if_nonzero(const char *message, int error_code)
 {
     if (error_code != 0)
@@ -238,8 +232,13 @@ void ActivityMQTTTask(void *pvParameters)
     char topic[30];
     while (true)
     {
-        esp_mqtt_client *client = mqtt_app_start();
-
+        esp_mqtt_client_config_t mqtt_cfg = {
+            .uri = "mqtt://45.80.181.181",
+            .username = "forback",
+            .password = "forback2024"};
+        esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+        esp_mqtt_client_start(client);
+        
         if (xQueueReceive(activityQueue, &ptr, pdMS_TO_TICKS(1000)) == pdTRUE)
         {
             char *data = ptr->activity_label;
@@ -277,8 +276,13 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     activityQueue = xQueueCreate(10, (sizeof(ActData)));
-
-    esp_mqtt_client *client = mqtt_app_start();
+    
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://45.80.181.181",
+        .username = "forback",
+        .password = "forback2024"};
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(client);
 
     BaseType_t ActivityTaskCreation = xTaskCreate(
         activity_detection_task,
