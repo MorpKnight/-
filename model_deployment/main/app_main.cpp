@@ -27,11 +27,13 @@
 #include "mpu6050.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
+#include "driver/gpio.h"
 
 #define I2C_MASTER_SCL_IO 6
 #define I2C_MASTER_SDA_IO 7
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 400000
+#define BUZZER_PIN GPIO_NUM_14 // Choose an available GPIO pin
 
 i2c_bus_handle_t i2c_bus = NULL;
 mpu6050_handle_t mpu6050 = NULL;
@@ -78,6 +80,7 @@ void free_and_log(void *ptr)
 void activity_detection_task(void *pvParameters)
 {
     bool was_sitting = false;
+    static bool buzzer_on = false;
     while (true)
     {
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
@@ -161,6 +164,18 @@ void activity_detection_task(void *pvParameters)
             char *fall_message = "Fall detected!";
             int msg_id = esp_mqtt_client_publish(client, fall_topic, fall_message, 0, 1, 0);
             ESP_LOGI(TAG, "Fall detected, sent publish successful, msg_id=%d", msg_id);
+            if (!buzzer_on)
+            {
+                ESP_LOGI(TAG, "Activating buzzer");
+                gpio_set_level(BUZZER_PIN, 1); // Turn on the buzzer
+                buzzer_on = true;
+            }
+        }
+        else if (buzzer_on && max_index == 3) // Detected standing up
+        {
+            ESP_LOGI(TAG, "Deactivating buzzer");
+            gpio_set_level(BUZZER_PIN, 0); // Turn off the buzzer
+            buzzer_on = false;
         }
 
         if (uxQueueSpacesAvailable(activityQueue) > 0) // Check if the queue has space
@@ -236,6 +251,10 @@ extern "C" void app_main(void)
         .password = "forback2024"};
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
+
+    gpio_reset_pin(BUZZER_PIN);
+    gpio_set_direction(BUZZER_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(BUZZER_PIN, 0); // Ensure buzzer is off initially
 
     activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
