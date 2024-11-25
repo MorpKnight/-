@@ -28,6 +28,13 @@
 #include "driver/i2c.h"
 #include "esp_log.h"
 
+// For GPS
+#define GPS_UART_NUM UART_NUM_2
+#define GPS_TX_PIN (GPIO_NUM_17)
+#define GPS_RX_PIN (GPIO_NUM_16)
+#define BUF_SIZE (1024)
+
+// For Act
 #define I2C_MASTER_SCL_IO 6
 #define I2C_MASTER_SDA_IO 7
 #define I2C_MASTER_NUM I2C_NUM_0
@@ -53,6 +60,20 @@ typedef struct ActivityData
 
 static QueueHandle_t activityQueue;
 
+// void uart_init()
+// {
+//     const uart_config_t uart_config = {
+//         .baud_rate = 9600,
+//         .data_bits = UART_DATA_8_BITS,
+//         .parity = UART_PARITY_DISABLE,
+//         .stop_bits = UART_STOP_BITS_1,
+//         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+//     };
+//     uart_driver_install(GPS_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+//     uart_param_config(GPS_UART_NUM, &uart_config);
+//     uart_set_pin(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+// }
+
 void log_error_if_nonzero(const char *message, int error_code)
 {
     if (error_code != 0)
@@ -77,6 +98,7 @@ void free_and_log(void *ptr)
 
 void activity_detection_task(void *pvParameters)
 {
+    bool was_sitting = false;
     while (true)
     {
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
@@ -133,18 +155,23 @@ void activity_detection_task(void *pvParameters)
             break;
         case 2:
             strncpy(ptr->activity_label, "Sitting", sizeof(ptr->activity_label));
+            was_sitting = true;
             break;
         case 3:
             strncpy(ptr->activity_label, "Standing", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         case 4:
             strncpy(ptr->activity_label, "Upstairs", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         case 5:
             strncpy(ptr->activity_label, "Walking", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         default:
             strncpy(ptr->activity_label, "No Result", sizeof(ptr->activity_label));
+            was_sitting = false;
             break;
         }
 
@@ -166,6 +193,28 @@ void activity_detection_task(void *pvParameters)
             free_and_log(ptr);
         }
 
+        if (was_sitting && max_index == 0) // Detected a fall from sitting to lying down
+        {
+            ActData *fell = (ActData *)pvPortMalloc(sizeof(ActData)); // Allocate memory for ActData
+            if (fell == NULL)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for activity data");
+                continue;
+            }
+            fell->activity_index = 7;
+            strncpy(fell->activity_label, "Falling Detected", sizeof(fell->activity_label));
+
+            if (xQueueSend(activityQueue, &fell, portMAX_DELAY) != pdPASS)
+            {
+                ESP_LOGE(TAG, "Failed to send activity data to queue");
+                free_and_log(fell); // Free the allocated memory if sending to the queue fails
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Sent activity data to queue: %s", fell->activity_label);
+            }
+        }
+
         // Free the memory
         dl::tool::free_aligned(model_input);
 
@@ -176,7 +225,7 @@ void activity_detection_task(void *pvParameters)
 void ActivityMQTTTask(void *pvParameters)
 {
     ActData *ptr;
-    char *topic = "/joki-despro/activity";
+    char topic[30];
     while (true)
     {
         esp_mqtt_client_config_t mqtt_cfg = {
@@ -190,7 +239,14 @@ void ActivityMQTTTask(void *pvParameters)
         {
             char *data = ptr->activity_label;
             ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
-
+            if (ptr->activity_index == 7)
+            {
+                strcpy(topic, "/joki-despro/fall");
+            }
+            else
+            {
+                strcpy(topic, "/joki-despro/activity");
+            }
             // Send data to MQTT
             int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
             ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
@@ -215,14 +271,14 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
+    activityQueue = xQueueCreate(10, (sizeof(ActData)));
+    
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = "mqtt://45.80.181.181",
         .username = "forback",
         .password = "forback2024"};
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
-
-    activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
     BaseType_t ActivityTaskCreation = xTaskCreate(
         activity_detection_task,
