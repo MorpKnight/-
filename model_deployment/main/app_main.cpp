@@ -33,7 +33,7 @@
 #include "driver/gpio.h"
 
 #include "Arduino.h"
-// #include "PulseSensorPlayground.h"
+#include "PulseSensorPlayground.h"
 
 // For GPS
 #define GPS_UART_NUM UART_NUM_2
