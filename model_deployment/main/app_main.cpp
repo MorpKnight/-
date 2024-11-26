@@ -26,9 +26,21 @@
 #include "i2c_bus.h"
 #include "mpu6050.h"
 #include "driver/i2c.h"
-#include "esp_log.h"
+
+#include "esp_spi_flash.h"
+#include "driver/uart.h"
 #include "driver/gpio.h"
 
+#include "Arduino.h"
+#include "PulseSensorPlayground.h"
+
+// For GPS
+#define GPS_UART_NUM UART_NUM_2
+#define GPS_TX_PIN (GPIO_NUM_17)
+#define GPS_RX_PIN (GPIO_NUM_16)
+#define BUF_SIZE (1024)
+
+// For Act
 #define I2C_MASTER_SCL_IO 6
 #define I2C_MASTER_SDA_IO 7
 #define I2C_MASTER_NUM I2C_NUM_0
@@ -47,6 +59,10 @@ int index_acc = 0;
 
 static const char *TAG = "MQTT_EXAMPLE";
 
+const int PulseWire = 13; // PulseSensor PURPLE WIRE connected to d13
+
+PulseSensorPlayground pulseSensor; // Creates an instance of the PulseSensorPlayground object.
+
 typedef struct ActivityData
 {
     int activity_index;
@@ -54,6 +70,20 @@ typedef struct ActivityData
 } ActData;
 
 static QueueHandle_t activityQueue;
+
+void uart_init()
+{
+    const uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    };
+    uart_driver_install(GPS_UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(GPS_UART_NUM, &uart_config);
+    uart_set_pin(GPS_UART_NUM, GPS_TX_PIN, GPS_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+}
 
 void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -80,7 +110,6 @@ void free_and_log(void *ptr)
 void activity_detection_task(void *pvParameters)
 {
     bool was_sitting = false;
-    static bool buzzer_on = false;
     while (true)
     {
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
@@ -196,6 +225,28 @@ void activity_detection_task(void *pvParameters)
             free_and_log(ptr);
         }
 
+        if (was_sitting && max_index == 0) // Detected a fall from sitting to lying down
+        {
+            ActData *fell = (ActData *)pvPortMalloc(sizeof(ActData)); // Allocate memory for ActData
+            if (fell == NULL)
+            {
+                ESP_LOGE(TAG, "Failed to allocate memory for activity data");
+                continue;
+            }
+            fell->activity_index = 7;
+            strncpy(fell->activity_label, "Falling Detected", sizeof(fell->activity_label));
+
+            if (xQueueSend(activityQueue, &fell, portMAX_DELAY) != pdPASS)
+            {
+                ESP_LOGE(TAG, "Failed to send activity data to queue");
+                free_and_log(fell); // Free the allocated memory if sending to the queue fails
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Sent activity data to queue: %s", fell->activity_label);
+            }
+        }
+
         // Free the memory
         dl::tool::free_aligned(model_input);
 
@@ -206,7 +257,7 @@ void activity_detection_task(void *pvParameters)
 void ActivityMQTTTask(void *pvParameters)
 {
     ActData *ptr;
-    char *topic = "/joki-despro/activity";
+    char topic[30];
     while (true)
     {
         esp_mqtt_client_config_t mqtt_cfg = {
@@ -220,7 +271,14 @@ void ActivityMQTTTask(void *pvParameters)
         {
             char *data = ptr->activity_label;
             ESP_LOGI(TAG, "Sending data to MQTT from Task: %s", data);
-
+            if (ptr->activity_index == 7)
+            {
+                strcpy(topic, "/joki-despro/fall");
+            }
+            else
+            {
+                strcpy(topic, "/joki-despro/activity");
+            }
             // Send data to MQTT
             int msg_id = esp_mqtt_client_publish(client, topic, data, 0, 1, 0);
             ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
@@ -234,6 +292,32 @@ void ActivityMQTTTask(void *pvParameters)
     // vTaskDelete(NULL);
 }
 
+void HeartbeatMonitorTask(void *pvParameters)
+{
+
+    // Configure the PulseSensor object, by assigning our variables to it.
+    pulseSensor.analogInput(PulseWire);
+
+    // Double-check if the "pulseSensor" object began seeing a signal.
+    if (pulseSensor.begin())
+    {
+        printf("We created a pulseSensor Object!\n"); // Replaced Serial.println with printf.
+    }
+
+    while (1)
+    { // Infinite loop to constantly check for beats
+        if (pulseSensor.sawStartOfBeat())
+        {                                                // Constantly test to see if "a beat happened".
+            int myBPM = pulseSensor.getBeatsPerMinute(); // Get the BPM value.
+
+            printf("♥  A HeartBeat Happened!\n"); // Print message when heartbeat detected.
+            printf("BPM: %d\n", myBPM);           // Print the BPM value using printf.
+        }
+
+        vTaskDelay(20 / portTICK_PERIOD_MS); // FreeRTOS delay for task (20ms delay)
+    }
+}
+
 extern "C" void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -245,18 +329,14 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
+    activityQueue = xQueueCreate(10, (sizeof(ActData)));
+
     esp_mqtt_client_config_t mqtt_cfg = {
         .uri = "mqtt://45.80.181.181",
         .username = "forback",
         .password = "forback2024"};
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_start(client);
-
-    gpio_reset_pin(BUZZER_PIN);
-    gpio_set_direction(BUZZER_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_level(BUZZER_PIN, 0); // Ensure buzzer is off initially
-
-    activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
     BaseType_t ActivityTaskCreation = xTaskCreate(
         activity_detection_task,
@@ -284,6 +364,24 @@ extern "C" void app_main(void)
         NULL);
 
     if (mqttTaskCreation == pdPASS)
+    {
+        ESP_LOGI(TAG, "Task 'ActivityMQTTTask' successfully created.");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to create task 'ActivityMQTTTask'.");
+        return;
+    }
+
+    BaseType_t heartBeatTaskCreation = xTaskCreate(
+        HeartbeatMonitorTask, // Task function
+        "Heartbeat Monitor",  // Task name
+        2048,                 // Stack size
+        NULL,                 // Task parameters
+        1,                    // Task priority
+        NULL                  // Task handle
+    );
+    if (heartBeatTaskCreation == pdPASS)
     {
         ESP_LOGI(TAG, "Task 'ActivityMQTTTask' successfully created.");
     }
