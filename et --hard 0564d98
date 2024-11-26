@@ -1,0 +1,108 @@
+[33mcommit f6d51938e0cc653181630ee922b150e87861098b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mwn[m[33m)[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Tue Nov 26 11:40:45 2024 +0700
+
+    a
+
+[33mcommit f2294039dbbea72bb9c13699140bb975f6cf13e4[m[33m ([m[1;31morigin/wn[m[33m)[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 11:12:19 2024 +0700
+
+    ok mqtt jgn modular
+
+[33mcommit f5238b95bd16821bd78bd3bdc6e45761001d8507[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 09:42:17 2024 +0700
+
+    change client declaration to be modular
+
+[33mcommit 1e2e4085e1d81d4c35a400e8882d96a09483a7d7[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 09:36:42 2024 +0700
+
+    removed useless main
+
+[33mcommit 469c76306b75dcc31e5b36a8e32d6801eceef095[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 09:34:52 2024 +0700
+
+    tambah jatuh
+
+[33mcommit 0564d98b7df604a6792efbaf827a1998a8377269[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 01:33:37 2024 +0700
+
+    deleted files
+
+[33mcommit dfb6342742d28e3e4ed26de0829ecb60874feb22[m[33m ([m[1;32mwnrapi[m[33m)[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 01:28:16 2024 +0700
+
+    rapi.
+
+[33mcommit 3512980c968f295c1b29b303472c6951e2576adc[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 01:26:14 2024 +0700
+
+    rapi
+
+[33mcommit 98208b7d27e3b963e48ee0a4de7227be4fadd3ac[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 01:19:22 2024 +0700
+
+    gajadi rapiin
+
+[33mcommit d3b9022fbd492a9d62e3d014858d88ec74488432[m
+Merge: 0dc35df c34d717
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 00:45:39 2024 +0700
+
+    rapiin
+
+[33mcommit 0dc35df3ceb6ff0b9b63b4e1d2831ab356c6e1a8[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Mon Nov 25 00:37:37 2024 +0700
+
+    added mqtt for act
+
+[33mcommit c34d71730dba08afee36dbfc47ff7800ff912438[m
+Author: MorpKnight <christoffelsihombing@gmail.com>
+Date:   Sun Nov 24 20:44:33 2024 +0700
+
+    aaa
+
+[33mcommit 2aed14187eb5f9344d8cf1fe82da8c49886fd22c[m
+Author: MorpKnight <christoffelsihombing@gmail.com>
+Date:   Sun Nov 24 20:43:45 2024 +0700
+
+    aaa
+
+[33mcommit 2670bdcb834b7e729ba8c42b4951515e27e307ec[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Sun Nov 24 15:50:33 2024 +0700
+
+    Sending act to queue task works
+
+[33mcommit 9d5c50523c89cc420db9244a2417cf81c088576c[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Sun Nov 24 13:20:42 2024 +0700
+
+    fixed task, model should be reinitialized in while loop
+
+[33mcommit fc1982b10a6c5664f360d226414a0015ff9e1646[m
+Author: lebit-L1x <lebitl1x@gmail.com>
+Date:   Sun Nov 24 13:11:26 2024 +0700
+
+    changed main to task
+
+[33mcommit c45accdcdee393994e48b76b91f4b8786583764f[m
+Author: MorpKnight <christoffelsihombing@gmail.com>
+Date:   Sat Nov 23 20:54:07 2024 +0700
+
+    problem flash done
+
+[33mcommit 0bb66f0d18ed4e2aeaf0fae5711c407b11240ad9[m
+Author: MorpKnight <christoffelsihombing@gmail.com>
+Date:   Sat Nov 23 20:43:19 2024 +0700
+
+    'ehh
