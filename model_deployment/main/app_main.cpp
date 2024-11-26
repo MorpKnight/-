@@ -60,7 +60,8 @@ static const char *TAG = "MQTT_EXAMPLE";
 
 const int PulseWire = 13; // PulseSensor PURPLE WIRE connected to d13
 
-PulseSensorPlayground pulseSensor; // Creates an instance of the PulseSensorPlayground object.
+PulseSensorPlayground pulseSensor;
+
 
 typedef struct ActivityData
 {
@@ -274,25 +275,28 @@ void HeartbeatMonitorTask(void *pvParameters)
 {
 
     // Configure the PulseSensor object, by assigning our variables to it.
-    pulseSensor.analogInput(PulseWire);
 
     // Double-check if the "pulseSensor" object began seeing a signal.
-    if (pulseSensor.begin())
+    if (!pulseSensor.begin())
     {
-        printf("We created a pulseSensor Object!\n"); // Replaced Serial.println with printf.
+        ESP_LOGE(TAG, "PulseSensor initialization failed");
+    }
+    else
+    {
+        printf("We created a pulseSensor Object!\n");
     }
 
-    while (1)
-    { // Infinite loop to constantly check for beats
+    while (true)
+    {
         if (pulseSensor.sawStartOfBeat())
-        {                                                // Constantly test to see if "a beat happened".
-            int myBPM = pulseSensor.getBeatsPerMinute(); // Get the BPM value.
+        { // Constantly test to see if "a beat happened".
+            int myBPM = pulseSensor.getBeatsPerMinute();
 
-            printf("♥  A HeartBeat Happened!\n"); // Print message when heartbeat detected.
-            printf("BPM: %d\n", myBPM);           // Print the BPM value using printf.
+            printf("♥  A HeartBeat Happened!\n");
+            printf("BPM: %d\n", myBPM);
         }
 
-        vTaskDelay(20 / portTICK_PERIOD_MS); // FreeRTOS delay for task (20ms delay)
+        vTaskDelay(pdMS_TO_TICKS(500)); // FreeRTOS delay for task (20ms delay)
     }
 }
 
