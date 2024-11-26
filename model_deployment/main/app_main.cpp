@@ -33,6 +33,7 @@
 
 #include "Arduino.h"
 #include "PulseSensorPlayground.h"
+#include "driver/adc.h"
 
 // For GPS
 #define GPS_UART_NUM UART_NUM_2
@@ -58,10 +59,9 @@ int index_acc = 0;
 
 static const char *TAG = "MQTT_EXAMPLE";
 
-const int PulseWire = 13; // PulseSensor PURPLE WIRE connected to d13
+const int PulseWire = 34; //  d34
 
 PulseSensorPlayground pulseSensor;
-
 
 typedef struct ActivityData
 {
@@ -311,6 +311,9 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0); // GPIO34
+    
     activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
     esp_mqtt_client_config_t mqtt_cfg = {
