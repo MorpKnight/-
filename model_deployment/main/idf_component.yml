@@ -4,6 +4,7 @@ dependencies:
   espressif/esp-dl: 
     git: https://github.com/espressif/esp-dl.git
     version: 959892df9a14760d2b69ef00e878056950a3071b
+  
   ## Required IDF version
   idf:
     version: ">=4.4.0"
