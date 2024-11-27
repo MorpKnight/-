@@ -46,6 +46,7 @@
 #define I2C_MASTER_SDA_IO 7
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 400000
+#define BUZZER_PIN GPIO_NUM_14 // Choose an available GPIO pin
 
 i2c_bus_handle_t i2c_bus = NULL;
 mpu6050_handle_t mpu6050 = NULL;
@@ -184,6 +185,27 @@ void activity_detection_task(void *pvParameters)
             strncpy(ptr->activity_label, "No Result", sizeof(ptr->activity_label));
             was_sitting = false;
             break;
+        }
+
+        if (was_sitting && max_index == 0) // Detected a fall from sitting to lying down
+        {
+            esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)pvParameters;
+            char *fall_topic = "/joki-despro/fall";
+            char *fall_message = "Fall detected!";
+            int msg_id = esp_mqtt_client_publish(client, fall_topic, fall_message, 0, 1, 0);
+            ESP_LOGI(TAG, "Fall detected, sent publish successful, msg_id=%d", msg_id);
+            if (!buzzer_on)
+            {
+                ESP_LOGI(TAG, "Activating buzzer");
+                gpio_set_level(BUZZER_PIN, 1); // Turn on the buzzer
+                buzzer_on = true;
+            }
+        }
+        else if (buzzer_on && max_index == 3) // Detected standing up
+        {
+            ESP_LOGI(TAG, "Deactivating buzzer");
+            gpio_set_level(BUZZER_PIN, 0); // Turn off the buzzer
+            buzzer_on = false;
         }
 
         if (uxQueueSpacesAvailable(activityQueue) > 0) // Check if the queue has space
