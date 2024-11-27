@@ -33,6 +33,7 @@
 
 #include "Arduino.h"
 #include "PulseSensorPlayground.h"
+#include "driver/adc.h"
 
 // For GPS
 #define GPS_UART_NUM UART_NUM_2
@@ -59,9 +60,9 @@ int index_acc = 0;
 
 static const char *TAG = "MQTT_EXAMPLE";
 
-const int PulseWire = 13; // PulseSensor PURPLE WIRE connected to d13
+// const int PulseWire = 34; //  d34
 
-PulseSensorPlayground pulseSensor; // Creates an instance of the PulseSensorPlayground object.
+// PulseSensorPlayground pulseSensor;
 
 typedef struct ActivityData
 {
@@ -292,30 +293,70 @@ void ActivityMQTTTask(void *pvParameters)
     // vTaskDelete(NULL);
 }
 
-void HeartbeatMonitorTask(void *pvParameters)
+// void HeartbeatMonitorTask(void *pvParameters)
+// {
+
+//     // Configure the PulseSensor object, by assigning our variables to it.
+
+//     // Double-check if the "pulseSensor" object began seeing a signal.
+//     if (!pulseSensor.begin())
+//     {
+//         ESP_LOGE(TAG, "PulseSensor initialization failed");
+//     }
+//     else
+//     {
+//         printf("We created a pulseSensor Object!\n");
+//     }
+
+//     while (true)
+//     {
+//         if (pulseSensor.sawStartOfBeat())
+//         { // Constantly test to see if "a beat happened".
+//             int myBPM = pulseSensor.getBeatsPerMinute();
+
+//             printf("♥  A HeartBeat Happened!\n");
+//             printf("BPM: %d\n", myBPM);
+//         }
+
+//         vTaskDelay(pdMS_TO_TICKS(500)); // FreeRTOS delay for task (20ms delay)
+//     }
+// }
+
+void gps_task(void *pvParameters)
 {
+    uint8_t data[BUF_SIZE];
+    const char *default_gps_data = "-6.361737757718157,106.82412483068309"; // Default GPS value
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://45.80.181.181",
+        .username = "forback",
+        .password = "forback2024"};
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(client);
 
-    // Configure the PulseSensor object, by assigning our variables to it.
-    pulseSensor.analogInput(PulseWire);
-
-    // Double-check if the "pulseSensor" object began seeing a signal.
-    if (pulseSensor.begin())
+    while (true)
     {
-        printf("We created a pulseSensor Object!\n"); // Replaced Serial.println with printf.
-    }
+        int len = uart_read_bytes(GPS_UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        if (len > 0)
+        {
+            data[len] = '\0'; // Null-terminate the string
+            ESP_LOGI(TAG, "GPS data: %s", data);
 
-    while (1)
-    { // Infinite loop to constantly check for beats
-        if (pulseSensor.sawStartOfBeat())
-        {                                                // Constantly test to see if "a beat happened".
-            int myBPM = pulseSensor.getBeatsPerMinute(); // Get the BPM value.
-
-            printf("♥  A HeartBeat Happened!\n"); // Print message when heartbeat detected.
-            printf("BPM: %d\n", myBPM);           // Print the BPM value using printf.
+            // Send GPS data to MQTT
+            int msg_id = esp_mqtt_client_publish(client, "/joki-despro/gps", (const char *)data, 0, 1, 0);
+            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         }
+        else
+        {
+            ESP_LOGW(TAG, "Failed to read GPS data, sending default value");
 
-        vTaskDelay(20 / portTICK_PERIOD_MS); // FreeRTOS delay for task (20ms delay)
+            // Send default GPS data to MQTT
+            int msg_id = esp_mqtt_client_publish(client, "/joki-despro/gps", default_gps_data, 0, 1, 0);
+            ESP_LOGI(TAG, "sent default GPS data, msg_id=%d", msg_id);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
+
+    esp_mqtt_client_destroy(client);
 }
 
 extern "C" void app_main(void)
@@ -329,6 +370,9 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0); // GPIO34
+    
     activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -373,21 +417,41 @@ extern "C" void app_main(void)
         return;
     }
 
-    BaseType_t heartBeatTaskCreation = xTaskCreate(
-        HeartbeatMonitorTask, // Task function
-        "Heartbeat Monitor",  // Task name
-        2048,                 // Stack size
-        NULL,                 // Task parameters
-        1,                    // Task priority
-        NULL                  // Task handle
-    );
-    if (heartBeatTaskCreation == pdPASS)
+    // BaseType_t heartBeatTaskCreation = xTaskCreate(
+    //     HeartbeatMonitorTask, // Task function
+    //     "Heartbeat Monitor",  // Task name
+    //     2048,                 // Stack size
+    //     NULL,                 // Task parameters
+    //     1,                    // Task priority
+    //     NULL                  // Task handle
+    // );
+    // if (heartBeatTaskCreation == pdPASS)
+    // {
+    //     ESP_LOGI(TAG, "Task 'ActivityMQTTTask' successfully created.");
+    // }
+    // else
+    // {
+    //     ESP_LOGE(TAG, "Failed to create task 'ActivityMQTTTask'.");
+    //     return;
+    // }
+
+    uart_init(); // Initialize UART for GPS
+
+    BaseType_t gpsTaskCreation = xTaskCreate(
+        gps_task,
+        "GPSTask",
+        4096,
+        NULL,
+        5,
+        NULL);
+
+    if (gpsTaskCreation == pdPASS)
     {
-        ESP_LOGI(TAG, "Task 'ActivityMQTTTask' successfully created.");
+        ESP_LOGI(TAG, "Task 'GPSTask' successfully created.");
     }
     else
     {
-        ESP_LOGE(TAG, "Failed to create task 'ActivityMQTTTask'.");
+        ESP_LOGE(TAG, "Failed to create task 'GPSTask'.");
         return;
     }
 }
