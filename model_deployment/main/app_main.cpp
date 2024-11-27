@@ -300,6 +300,43 @@ void HeartbeatMonitorTask(void *pvParameters)
     }
 }
 
+void gps_task(void *pvParameters)
+{
+    uint8_t data[BUF_SIZE];
+    const char *default_gps_data = "-6.361737757718157,106.82412483068309"; // Default GPS value
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://45.80.181.181",
+        .username = "forback",
+        .password = "forback2024"};
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(client);
+
+    while (true)
+    {
+        int len = uart_read_bytes(GPS_UART_NUM, data, BUF_SIZE, 20 / portTICK_RATE_MS);
+        if (len > 0)
+        {
+            data[len] = '\0'; // Null-terminate the string
+            ESP_LOGI(TAG, "GPS data: %s", data);
+
+            // Send GPS data to MQTT
+            int msg_id = esp_mqtt_client_publish(client, "/joki-despro/gps", (const char *)data, 0, 1, 0);
+            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        }
+        else
+        {
+            ESP_LOGW(TAG, "Failed to read GPS data, sending default value");
+
+            // Send default GPS data to MQTT
+            int msg_id = esp_mqtt_client_publish(client, "/joki-despro/gps", default_gps_data, 0, 1, 0);
+            ESP_LOGI(TAG, "sent default GPS data, msg_id=%d", msg_id);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    esp_mqtt_client_destroy(client);
+}
+
 extern "C" void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -373,6 +410,26 @@ extern "C" void app_main(void)
     else
     {
         ESP_LOGE(TAG, "Failed to create task 'ActivityMQTTTask'.");
+        return;
+    }
+
+    uart_init(); // Initialize UART for GPS
+
+    BaseType_t gpsTaskCreation = xTaskCreate(
+        gps_task,
+        "GPSTask",
+        4096,
+        NULL,
+        5,
+        NULL);
+
+    if (gpsTaskCreation == pdPASS)
+    {
+        ESP_LOGI(TAG, "Task 'GPSTask' successfully created.");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to create task 'GPSTask'.");
         return;
     }
 }
