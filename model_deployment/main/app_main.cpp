@@ -31,8 +31,6 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
-#include "Arduino.h"
-#include "PulseSensorPlayground.h"
 #include "driver/adc.h"
 
 // For GPS
@@ -42,14 +40,14 @@
 #define BUF_SIZE (1024)
 
 // For Act
-#define I2C_MASTER_SCL_IO 6
-#define I2C_MASTER_SDA_IO 7
+#define I2C_MASTER_SCL_IO 9
+#define I2C_MASTER_SDA_IO 8
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_MASTER_FREQ_HZ 400000
-#define BUZZER_PIN GPIO_NUM_14 // Choose an available GPIO pin
+// #define BUZZER_PIN GPIO_NUM_14 // Choose an available GPIO pin
 
-i2c_bus_handle_t i2c_bus = NULL;
-mpu6050_handle_t mpu6050 = NULL;
+static i2c_bus_handle_t i2c_bus = NULL;
+static mpu6050_handle_t mpu6050 = NULL;
 
 int input_height = 80;
 int input_width = 3;
@@ -75,7 +73,7 @@ static QueueHandle_t activityQueue;
 void uart_init()
 {
     const uart_config_t uart_config = {
-        .baud_rate = 9600,
+        .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -110,9 +108,48 @@ void free_and_log(void *ptr)
 
 void activity_detection_task(void *pvParameters)
 {
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .clk_flags = 0,
+    };
+        conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+
+    i2c_bus = i2c_bus_create(I2C_MASTER_NUM, &conf);
+    mpu6050 = mpu6050_create(i2c_bus, MPU6050_I2C_ADDRESS);
+    uint8_t mpu6050_deviceid;
+    mpu6050_acce_value_t acce;
+    // int cnt = 10;
+    mpu6050_get_deviceid(mpu6050, &mpu6050_deviceid);
+    printf("mpu6050 device ID is: 0x%02x\n", mpu6050_deviceid);
+    mpu6050_wake_up(mpu6050);
+    mpu6050_set_acce_fs(mpu6050, ACCE_FS_4G);
+    mpu6050_set_gyro_fs(mpu6050, GYRO_FS_500DPS);
+    
     bool was_sitting = false;
-    while (true)
-    {
+    while (true){
+    for (int i=0 ;i<80; i++)
+{
+
+    mpu6050_get_acce(mpu6050, &acce);
+    // printf("acce_x:%.2f, acce_y:%.2f, acce_z:%.2f\n", acce.acce_x, acce.acce_y, acce.acce_z);
+    
+    // acc_xyz[i]={acc_value.raw_acce_x,acc_value.raw_acce_y,acc_value.raw_acce_z};
+    acc_xyz[index_acc]=acce.acce_x;
+    index_acc=index_acc+1;
+    acc_xyz[index_acc]=acce.acce_y;
+    index_acc=index_acc+1;
+    acc_xyz[index_acc]=acce.acce_z;
+    index_acc=index_acc+1;
+    // ESP_LOGI(TAG, "%f\n",acc_xyz[i]);    
+    vTaskDelay(50 / portTICK_RATE_MS);
+    // printf("%d",portTICK_RATE_MS);
+}
+    index_acc = 0;
+    
         int16_t *model_input = (int16_t *)dl::tool::malloc_aligned_prefer(input_height * input_width * input_channel, sizeof(int16_t *));
         Tensor<int16_t> input;
         index_acc = 0;
@@ -145,6 +182,7 @@ void activity_detection_task(void *pvParameters)
             {
                 max_score = score[i];
                 max_index = i;
+                ESP_LOGI(TAG, "Score[%zu]: %f", i, score[i]);
             }
         }
 
@@ -193,20 +231,20 @@ void activity_detection_task(void *pvParameters)
             char *fall_topic = "/joki-despro/fall";
             char *fall_message = "Fall detected!";
             int msg_id = esp_mqtt_client_publish(client, fall_topic, fall_message, 0, 1, 0);
-            ESP_LOGI(TAG, "Fall detected, sent publish successful, msg_id=%d", msg_id);
-            if (!buzzer_on)
-            {
-                ESP_LOGI(TAG, "Activating buzzer");
-                gpio_set_level(BUZZER_PIN, 1); // Turn on the buzzer
-                buzzer_on = true;
-            }
+             ESP_LOGI(TAG, "Fall detected, sent publish successful, msg_id=%d", msg_id);
+            // if (!buzzer_on)
+            // {
+            //     ESP_LOGI(TAG, "Activating buzzer");
+            //     gpio_set_level(BUZZER_PIN, 1); // Turn on the buzzer
+            //     buzzer_on = true;
+            // }
         }
-        else if (buzzer_on && max_index == 3) // Detected standing up
-        {
-            ESP_LOGI(TAG, "Deactivating buzzer");
-            gpio_set_level(BUZZER_PIN, 0); // Turn off the buzzer
-            buzzer_on = false;
-        }
+        // else if (buzzer_on && max_index == 3) // Detected standing up
+        // {
+        //     ESP_LOGI(TAG, "Deactivating buzzer");
+        //     gpio_set_level(BUZZER_PIN, 0); // Turn off the buzzer
+        //     buzzer_on = false;
+        // }
 
         if (uxQueueSpacesAvailable(activityQueue) > 0) // Check if the queue has space
         {
@@ -253,6 +291,7 @@ void activity_detection_task(void *pvParameters)
 
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+
 }
 
 void ActivityMQTTTask(void *pvParameters)
@@ -372,6 +411,7 @@ extern "C" void app_main(void)
 
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_0); // GPIO34
+    
     
     activityQueue = xQueueCreate(10, (sizeof(ActData)));
 
